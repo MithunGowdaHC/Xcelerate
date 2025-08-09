@@ -4,6 +4,7 @@ import FileDropzone from "@/components/file-dropzone"
 import PreviewTable from "@/components/preview-table"
 import SuccessCheck from "@/components/success-check"
 import MetricsSummary from "@/components/metrics-summary"
+import ThemeToggle from "./theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -289,9 +290,9 @@ export default function AmazonCollator() {
             </Select>
           </div>
 
-          <div className="flex items-end">
+          <div className="flex cursor-pointer items-end">
             <Button
-              className="w-full rounded-full bg-gradient-to-r from-violet-600 to-emerald-600 hover:from-violet-600/90 hover:to-emerald-600/90 shadow-md hover:shadow-lg transition"
+              className="w-full  text-white  rounded-full bg-gradient-to-r from-violet-600 to-emerald-600 hover:from-violet-600/90 hover:to-emerald-600/90 shadow-md hover:shadow-lg transition"
               onClick={onProcess}
               disabled={!canProcess || loading}
             >
@@ -303,6 +304,7 @@ export default function AmazonCollator() {
               ) : (
                 "Collate and Download"
               )}
+              
             </Button>
           </div>
         </div>
