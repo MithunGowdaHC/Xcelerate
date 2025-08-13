@@ -23,7 +23,7 @@ type Props = {
 export default function FileDropzone({
   label = "Upload files",
   description = "Drag and drop CSV or Excel files here, or click to browse.",
-  maxFiles = 3,
+  maxFiles = 5,
   accept = ".csv, .xlsx, .xls",
   onFiles = () => {},
   onRemove,

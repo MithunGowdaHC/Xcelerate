@@ -4,7 +4,6 @@ import FileDropzone from "@/components/file-dropzone"
 import PreviewTable from "@/components/preview-table"
 import SuccessCheck from "@/components/success-check"
 import MetricsSummary from "@/components/metrics-summary"
-import ThemeToggle from "./theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,6 +23,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { useSessionState } from "@/hooks/use-session-state"
 
+/** ---- Columns & Metric Meta ---- */
 const AMAZON_COLUMNS = [
   "Date",
   "Campaign Name",
@@ -45,6 +45,7 @@ const METRIC_LABELS: Record<string, string> = {
   "14 Day Total Orders (#)": "Orders",
 }
 
+/** ---- Types ---- */
 type ReportData = { name: string; size?: number; rows: Row[] }
 type Totals = Record<string, number>
 type CategoryTotals = { category: string; totals: Totals }
@@ -60,22 +61,96 @@ type AmazonState = {
   byCategory?: CategoryTotals[]
 }
 
-function toNumber(v: any): number {
-  if (typeof v === "number") return isFinite(v) ? v : 0
-  if (typeof v === "string") {
-    const s = v.replace(/[^0-9.-]/g, "").trim()
-    const n = Number.parseFloat(s)
-    return isFinite(n) ? n : 0
-  }
-  return 0
+/** ----------------------------------------------------------------
+ *  SANITIZATION HELPERS
+ *  ---------------------------------------------------------------- */
+const NBSP = /\u00A0/g
+const ZWSP = /\u200B/g
+
+/** Clean string: trim, remove invisible spaces */
+function cleanString(v: unknown): string {
+  return String(v ?? "")
+    .replace(NBSP, " ")
+    .replace(ZWSP, "")
+    .trim()
 }
 
+/** Robust number cleaner:
+ *  - Removes ₹, mojibake (â‚¹), $, €, £
+ *  - Removes commas (Indian/US)
+ *  - Removes NBSP, stray text
+ *  - Converts (123) -> -123
+ */
+function cleanNumber(v: any): number {
+  if (v == null || v === "") return 0
+  if (typeof v === "number") return isFinite(v) ? v : 0
+  let s = String(v)
+    .replace(/â‚¹|₹|\$|€|£/g, "") // currency & mojibake
+    .replace(/,/g, "") // thousand separators
+    .replace(NBSP, "") // non-breaking space
+    .replace(/\(([^)]+)\)/g, "-$1") // (123) -> -123
+    .replace(/[^0-9.\-]/g, "") // keep digits/dot/minus only
+    .trim()
+  const n = Number.parseFloat(s)
+  return isFinite(n) ? n : 0
+}
+
+/** Normalize a row:
+ *  - Trim strings for keys we join on (Campaign Name)
+ *  - Clean numeric metric columns
+ */
+function sanitizeRow(row: Row): Row {
+  const out: Row = { ...row }
+
+  // Campaign Name used for mapping — trim & normalize spaces
+  if ("Campaign Name" in out) {
+    out["Campaign Name"] = cleanString(out["Campaign Name"])
+  }
+
+  // Portfolio name also often messy
+  if ("Portfolio name" in out) {
+    out["Portfolio name"] = cleanString(out["Portfolio name"])
+  }
+
+  // Clean metrics
+  for (const k of METRIC_ORDER) {
+    if (k in out) out[k] = cleanNumber(out[k] as any)
+  }
+
+  return out
+}
+
+/** After optional mapping, ensure Category field clean */
+function sanitizeCategory(rows: Row[]): Row[] {
+  return rows.map((r) => {
+    if ("Category" in r) {
+      return { ...r, Category: cleanString((r as any).Category) || "Uncategorized" }
+    }
+    return r
+  })
+}
+
+/** Compute integer-only preview rows (no decimals in UI) */
+function integerizeForPreview(rows: Row[]): Row[] {
+  return rows.map((r) => {
+    const copy: Row = { ...r }
+    for (const k of METRIC_ORDER) {
+      if (k in copy) {
+        const n = cleanNumber(copy[k] as any)
+        copy[k] = Math.round(n) // UI only: integers
+      }
+    }
+    return copy
+  })
+}
+
+/** Totals from CLEAN numeric values (accurate, not rounded) */
 function computeTotals(rows: Row[]): Totals {
   const totals: Totals = {}
   METRIC_ORDER.forEach((k) => (totals[k] = 0))
   for (const r of rows) {
     METRIC_ORDER.forEach((k) => {
-      totals[k] += toNumber(r[k])
+      totals[k] += cleanNumber(r[k])
     })
   }
   return totals
@@ -86,8 +161,7 @@ function computeCategoryTotals(rows: Row[]): CategoryTotals[] {
   if (!hasCategory) return []
   const map = new Map<string, Totals>()
   for (const r of rows) {
-    const catRaw = String((r as any).Category ?? "").trim()
-    const cat = catRaw || "Uncategorized"
+    const cat = cleanString((r as any).Category ?? "") || "Uncategorized"
     if (!map.has(cat)) {
       const base: Totals = {}
       METRIC_ORDER.forEach((k) => (base[k] = 0))
@@ -95,7 +169,7 @@ function computeCategoryTotals(rows: Row[]): CategoryTotals[] {
     }
     const agg = map.get(cat)!
     METRIC_ORDER.forEach((k) => {
-      agg[k] += toNumber(r[k])
+      agg[k] += cleanNumber(r[k])
     })
   }
   return Array.from(map.entries())
@@ -103,9 +177,12 @@ function computeCategoryTotals(rows: Row[]): CategoryTotals[] {
     .sort((a, b) => a.category.localeCompare(b.category))
 }
 
+/** ----------------------------------------------------------------
+ *  COMPONENT
+ *  ---------------------------------------------------------------- */
 export default function AmazonCollator() {
   const { toast } = useToast()
-  const [state, setState] = useSessionState<AmazonState>("amazon.state.v3", {
+  const [state, setState] = useSessionState<AmazonState>("amazon.state.v4", {
     reports: [],
     mapping: null,
     format: "xlsx",
@@ -118,14 +195,20 @@ export default function AmazonCollator() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
+  // Reset success indicator on any state change
   useEffect(() => setSuccess(false), [state])
 
   const canProcess = useMemo(() => state.reports.length >= 1 && state.reports.length <= 3, [state.reports.length])
 
+  /** Read & stage report files */
   const handleReports = async (files: File[]) => {
     try {
-      const arrays = await Promise.all(files.map(readFile))
-      const reports: ReportData[] = arrays.map((rows, i) => ({ name: files[i].name, size: files[i].size, rows }))
+      const arrays = await Promise.all(files.map(readFile)) // relies on your utils; returns Row[][]
+      const reports: ReportData[] = arrays.map((rows, i) => ({
+        name: files[i].name,
+        size: files[i].size,
+        rows,
+      }))
       setState((prev) => ({ ...prev, reports }))
     } catch (e: any) {
       toast({
@@ -144,12 +227,22 @@ export default function AmazonCollator() {
     })
   }
 
+  /** Optional mapping sheet */
   const handleMapping = async (files: File[]) => {
     const f = files[0]
     if (!f) return
     try {
       const rows = await readFile(f)
-      setState((prev) => ({ ...prev, mapping: { name: f.name, size: f.size, rows } }))
+      // pre-sanitize mapping keys used in join
+      const sanitized = rows.map((r) => {
+        const copy: Row = { ...r }
+        if ("Campaign Name" in copy) copy["Campaign Name"] = cleanString(copy["Campaign Name"])
+        if ("Category" in copy) (copy as any)["Category"] = cleanString((copy as any)["Category"])
+        if ("Intent" in copy) (copy as any)["Intent"] = cleanString((copy as any)["Intent"])
+        if ("Ad type" in copy) (copy as any)["Ad type"] = cleanString((copy as any)["Ad type"])
+        return copy
+      })
+      setState((prev) => ({ ...prev, mapping: { name: f.name, size: f.size, rows: sanitized } }))
     } catch (e: any) {
       toast({
         title: "Failed to read mapping",
@@ -161,6 +254,7 @@ export default function AmazonCollator() {
 
   const clearMapping = () => setState((prev) => ({ ...prev, mapping: null }))
 
+  /** MAIN PROCESSOR */
   const onProcess = async () => {
     try {
       if (!canProcess) {
@@ -168,35 +262,53 @@ export default function AmazonCollator() {
         return
       }
       setLoading(true)
+
+      // 1) Column map & merge
       const datasets = state.reports.map((r) => r.rows)
       const mapped = datasets.map((rows) => mapColumns(rows, [...AMAZON_COLUMNS]))
       let combined = mapped.flat()
 
-      // Normalize Date
+      // 2) Normalize dates (user-selected format for output view)
       combined = normalizeDateColumn(combined, "Date", state.dateFormat)
 
-      // Optional mapping => add Category column
+      // 3) Sanitize rows (numbers / strings) BEFORE any aggregation/mapping
+      combined = combined.map(sanitizeRow)
+
+      // 4) Optional mapping (ensure campaign names trimmed on both sides)
       if (state.mapping) {
+        // We already sanitized mapping rows on upload
+        combined = combined.map((r) => ({
+          ...r,
+          "Campaign Name": cleanString(r["Campaign Name"]),
+        }))
         combined = addAttributesByCampaign(combined, state.mapping.rows, "Campaign Name", {
           category: "Category",
           intent: "Intent",
           adType: "Ad type",
         })
+        combined = sanitizeCategory(combined)
       }
 
-      // Compute summaries from full combined dataset
+      // 5) Compute summaries from CLEAN data (accurate)
       const totals = computeTotals(combined)
       const byCategory = computeCategoryTotals(combined)
 
+      // 6) UI preview must show whole numbers (no decimals)
+      const preview = integerizeForPreview(combined).slice(0, 50)
+
+      // 7) Persist state for session continuity
       setState((prev) => ({
         ...prev,
-        preview: combined.slice(0, 50),
+        preview,
         totals,
         byCategory,
       }))
+
       setSuccess(true)
 
+      // 8) Download CLEAN data (keeps decimals where present for accuracy)
       download(combined, state.outName || "amazon-collated", state.format)
+
       toast({ title: "File ready!", description: "Your combined file has been downloaded." })
     } catch (e: any) {
       console.error(e)
@@ -216,16 +328,18 @@ export default function AmazonCollator() {
         <CardTitle className="text-lg">Amazon Campaign Processor</CardTitle>
         <CardDescription>Upload your SP, SB and SD reports, optional mapping, and export CSV/XLSX.</CardDescription>
       </CardHeader>
+
       <CardContent className="space-y-6 pt-6">
         <div className="grid md:grid-cols-[2fr_1fr] gap-6">
           <FileDropzone
             label="Amazon reports"
-            description="Upload  CSV/XLSX reports"
-            maxFiles={5}
+            description="Upload CSV/XLSX reports (max 5)"
+            maxFiles={5}                             
             onFiles={handleReports}
             onRemove={removeReport}
             displayFiles={state.reports.map((r) => ({ name: r.name, size: r.size }))}
           />
+
           <div className="space-y-3">
             <FileDropzone
               label="Mapping sheet (optional)"
@@ -292,7 +406,7 @@ export default function AmazonCollator() {
 
           <div className="flex cursor-pointer items-end">
             <Button
-              className="w-full  text-white  rounded-full bg-gradient-to-r from-violet-600 to-emerald-600 hover:from-violet-600/90 hover:to-emerald-600/90 shadow-md hover:shadow-lg transition"
+              className="w-full text-white rounded-full bg-gradient-to-r from-violet-600 to-emerald-600 hover:from-violet-600/90 hover:to-emerald-600/90 shadow-md hover:shadow-lg transition"
               onClick={onProcess}
               disabled={!canProcess || loading}
             >
@@ -304,7 +418,6 @@ export default function AmazonCollator() {
               ) : (
                 "Collate and Download"
               )}
-              
             </Button>
           </div>
         </div>
@@ -314,7 +427,7 @@ export default function AmazonCollator() {
           {success && <p className="text-sm text-emerald-600 dark:text-emerald-400">File downloaded.</p>}
         </div>
 
-        {/* Summary blocks above preview */}
+        {/* Summary blocks above preview (accurate metrics) */}
         {state.totals && (
           <MetricsSummary
             totals={state.totals}
@@ -326,6 +439,7 @@ export default function AmazonCollator() {
 
         <div>
           <h3 className="font-semibold mb-2">Preview</h3>
+          {/* Preview shows integers (no decimals) */}
           <PreviewTable rows={state.preview} />
         </div>
       </CardContent>
