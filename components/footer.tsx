@@ -78,7 +78,7 @@ export default function Footer() {
         </div>
         <div className="mt-10 text-xs text-muted-foreground text-center">
           © {new Date().getFullYear()} Excelerate. Crafted by <a href="https://www.linkedin.com/in/mithungowda10/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Mithun Gowda</a>. All rights reserved.
-          © {new Date().getFullYear()} Excelerate. Crafted by Mithun Gowda. All rights reserved.
+          
          
         </div>
       </div>
