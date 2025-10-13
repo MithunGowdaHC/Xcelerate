@@ -11,7 +11,7 @@ export default function Footer() {
           <div>
             <div className="text-xl font-semibold">Excelerate</div>
             <p className="text-sm text-muted-foreground mt-3">
-              Premium in‑browser ad report collation. Private. Fast. Beautiful.
+              Premium in‑browser tool. Private. Fast. Beautiful.
             </p>
           </div>
           <div>

@@ -7,8 +7,7 @@ import { GeistMono } from "geist/font/mono"
 
 export const metadata: Metadata = {
   title: "Excelerate",
-  description: "Premium in-browser ad report collation",
-    generator: 'v0.dev'
+  description: "Premium in‑browser tool. Private. Fast. Beautiful.",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
