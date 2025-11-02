@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/visualize", label: "Visualize" },
+  { href: "/powerbi", label: "PowerBI" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ]
