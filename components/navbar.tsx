@@ -42,7 +42,15 @@ export default function Navbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 120, damping: 16 }}
-      className="sticky top-0 z-50 w-full border-b backdrop-blur bg-background/70"
+      className="
+      sticky top-0 z-50 w-full
+      border-b border-white/10 
+      bg-background/40 
+      backdrop-blur-xl 
+      supports-[backdrop-filter]:bg-background/30
+      shadow-[0_8px_32px_rgba(0,0,0,0.1)]
+    "
+    
       role="banner"
     >
       <nav className="container mx-auto grid grid-cols-3 items-center py-3 px-4">
