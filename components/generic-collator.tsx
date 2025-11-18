@@ -264,7 +264,7 @@ export default function GenericCollator() {
         </div>
 
         <Button
-          className="w-full md:w-auto rounded-full bg-gradient-to-r from-violet-600 to-emerald-600 hover:from-violet-600/90 hover:to-emerald-600/90 shadow-md hover:shadow-lg transition"
+          className="w-full  md:w-auto rounded-full bg-gradient-to-r from-violet-600 to-emerald-600 hover:from-violet-600/90 hover:to-emerald-600/90 shadow-md hover:shadow-lg transition"
           disabled={loading || state.files.length === 0}
           onClick={onProcess}
         >
