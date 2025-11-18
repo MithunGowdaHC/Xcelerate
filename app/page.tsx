@@ -45,7 +45,7 @@ export default function HomePage() {
       {/* HERO SECTION */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,#d9caff_0%,#f7f3ff_10%,#d8fae9_80%)] dark:bg-black" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:4rem_4rem]" />
         
         <div className="container mx-auto px-4 py-16">
           <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
@@ -250,15 +250,25 @@ export default function HomePage() {
                   desc: "Sponsored Products, Brands & Display",
                   icon: Package,
                   status: "active",
-                  gradient: "from-orange-500 to-red-500",
+                  gradient: "from-[#FF9900] to-[#FF9900]", // Amazon orange
+                  bgColor: "bg-[#FF9900]",
                   link: "/amazon",
+                },
+                {
+                  name: "ASIN Reports Collation",
+                  desc: "Collate Sponsored Products & Display by ASIN",
+                  icon: FileSpreadsheet, // or any icon you prefer
+                  status: "active",
+                  gradient: "from-emerald-500 to-teal-500",
+                  link: "/amazon/asin",
                 },
                 {
                   name: "Multi-File Collation",
                   desc: "Combine up to 10 files",
                   icon: FileSpreadsheet,
                   status: "active",
-                  gradient: "from-blue-500 to-cyan-500",
+                  gradient: "from-violet-600 to-violet-700", // Excelerate brand
+                  bgColor: "bg-violet-600",
                   link: "/multi-collate",
                 },
                 {
@@ -266,7 +276,8 @@ export default function HomePage() {
                   desc: "Tailored for Flipkart reports",
                   icon: ShoppingCart,
                   status: "coming",
-                  gradient: "from-yellow-500 to-orange-500",
+                  gradient: "from-[#2874F0] to-[#2874F0]", // Flipkart blue
+                  bgColor: "bg-[#2874F0]",
                   link: "/coming-soon",
                 },
                 {
@@ -274,7 +285,8 @@ export default function HomePage() {
                   desc: "Quick commerce insights",
                   icon: Zap,
                   status: "coming",
-                  gradient: "from-purple-500 to-pink-500",
+                  gradient: "from-[#5D2EA9] to-[#5D2EA9]", // Zepto purple
+                  bgColor: "bg-[#5D2EA9]",
                   link: "/coming-soon",
                 },
                 {
@@ -282,7 +294,8 @@ export default function HomePage() {
                   desc: "Food delivery campaign analytics",
                   icon: UtensilsCrossed,
                   status: "coming",
-                  gradient: "from-orange-400 to-red-400",
+                  gradient: "from-[#FC8019] to-[#FC8019]", // Swiggy orange
+                  bgColor: "bg-[#FC8019]",
                   link: "/coming-soon",
                 },
                 {
@@ -290,7 +303,8 @@ export default function HomePage() {
                   desc: "Instant delivery performance",
                   icon: Store,
                   status: "coming",
-                  gradient: "from-green-500 to-emerald-500",
+                  gradient: "from-[#F8CB46] to-[#F8CB46]", // Blinkit yellow
+                  bgColor: "bg-[#F8CB46]",
                   link: "/coming-soon",
                 },
               ].map((processor, i) => (
@@ -338,7 +352,7 @@ export default function HomePage() {
                         {processor.status === "active" ? (
                           <Link href={processor.link}>
                             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                              <Button className={cn("w-full rounded-xl bg-gradient-to-r text-white text-sm shadow-lg hover:shadow-xl transition-all duration-300 relative z-10", processor.gradient)}>
+                              <Button className={cn("w-full cursor-pointer rounded-xl bg-gradient-to-r text-white text-sm shadow-lg hover:shadow-xl transition-all duration-300 relative z-10", processor.gradient)}>
                                 Start Processing
                                 <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
                                   <ArrowRight className="ml-2 w-4 h-4 inline" />

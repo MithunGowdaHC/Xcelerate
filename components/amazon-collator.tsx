@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import Chatbot from "@/components/chatbot"
 import {
   download,
   mapColumns,
@@ -59,6 +60,7 @@ type AmazonState = {
   preview: Row[]
   totals?: Totals
   byCategory?: CategoryTotals[]
+  fullRows?: Row[]
 }
 
 /** ----------------------------------------------------------------
@@ -295,16 +297,18 @@ export default function AmazonCollator() {
 
       // 6) UI preview must show whole numbers (no decimals)
       const preview = integerizeForPreview(combined).slice(0, 50)
+       setState((prev) => ({ ...prev, preview, totals, byCategory, fullRows: combined }))
 
       // 7) Persist state for session continuity
-      setState((prev) => ({
-        ...prev,
-        preview,
-        totals,
-        byCategory,
-      }))
+    setState((prev) => ({
+  ...prev,
+  preview,
+  totals,
+  byCategory,
+  fullRows: combined, // ✅ ADDED: Store the full cleaned dataset here
+}))
 
-      setSuccess(true)
+setSuccess(true)
 
       // 8) Download CLEAN data (keeps decimals where present for accuracy)
       download(combined, state.outName || "amazon-collated", state.format)
@@ -321,8 +325,14 @@ export default function AmazonCollator() {
       setLoading(false)
     }
   }
-
   return (
+<>
+<Chatbot 
+  data={state.fullRows ?? []} 
+  storageKey="chatbot.amazon.v1" 
+  section="amazon"  // ✅ ADD THIS
+/>
+
     <Card className="bg-background/70 backdrop-blur border-violet-100/30 dark:border-violet-800/30 shadow-sm">
       <CardHeader className="rounded-t-2xl bg-gradient-to-r from-violet-50 to-emerald-50 dark:from-violet-950/40 dark:to-emerald-950/40">
         <CardTitle className="text-lg">Amazon Campaign Processor</CardTitle>
@@ -406,7 +416,7 @@ export default function AmazonCollator() {
 
           <div className="flex cursor-pointer items-end">
             <Button
-              className="w-full text-white rounded-full bg-gradient-to-r from-violet-600 to-emerald-600 hover:from-violet-600/90 hover:to-emerald-600/90 shadow-md hover:shadow-lg transition"
+              className="w-full cursor-pointer text-white rounded-full bg-gradient-to-r from-violet-600 to-emerald-600 hover:from-violet-600/90 hover:to-emerald-600/90 shadow-md hover:shadow-lg transition"
               onClick={onProcess}
               disabled={!canProcess || loading}
             >
@@ -427,13 +437,15 @@ export default function AmazonCollator() {
           {success && <p className="text-sm text-emerald-600 dark:text-emerald-400">File downloaded.</p>}
         </div>
 
-        {/* Summary blocks above preview (accurate metrics) */}
-        {state.totals && (
+       {/* Summary blocks above preview (accurate metrics) */}
+       {state.fullRows && state.fullRows.length > 0 && (
           <MetricsSummary
-            totals={state.totals}
-            byCategory={state.byCategory ?? []}
+            fullRows={state.fullRows}
             order={[...METRIC_ORDER]}
             labels={METRIC_LABELS}
+            dateFormat={state.dateFormat}
+            dateColumn="Date"
+            storageKey="chatbot.asin.v1"
           />
         )}
 
@@ -444,5 +456,8 @@ export default function AmazonCollator() {
         </div>
       </CardContent>
     </Card>
+    </>
   )
 }
+
+
